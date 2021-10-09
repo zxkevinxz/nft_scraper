@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 const puppeteer = require('puppeteer');
 const Promise = require('bluebird');
 const Sheet = require('./Sheet');
@@ -22,28 +23,28 @@ async function start() {
     });
     const headerDataRow = await nftData[0].$('thead tr');
     const headerDataRowTitles = await headerDataRow.$$('th');
-    const headers = await Promise.map(headerDataRowTitles, async (t) => t.evaluate((el) => el.textContent.trim()));
-
-    for (let idx = 0; idx < nftData.length; idx++) {
-      const nftsByDayRows = await nftData[idx].$$('tbody tr');
-      const nfts = await Promise.map(nftsByDayRows, async (row) => {
-        const rowData = await row.$$('td');
+    const headers = await Promise.map(headerDataRowTitles,
+      async (t) => t.evaluate((el) => el.textContent.trim()));
+    const nfts = [];
+    await Promise.map(nftData, async (day, idx) => {
+      const nftDate = titles[idx];
+      const nftsByDayRows = await day.$$('tbody tr');
+      const nftByDay = await Promise.map(nftsByDayRows, async (row) => {
         const currentNft = {};
-        for (let rowIdx = 0; rowIdx < rowData.length; rowIdx++) {
-          if (rowIdx !== 1) currentNft[headers[rowIdx]] = await rowData[rowIdx].evaluate((el) => el.textContent.trim());
-          const linkData = await rowData[rowIdx].$$('a');
-          if (linkData.length > 0) {
-            const links = await Promise.map(linkData, async (l) => l.evaluate((el) => el.href));
-            currentNft[headers[rowIdx]] = links.join(' ');
-            currentNft.Date = titles[idx];
-          }
-        }
+        currentNft.Date = nftDate;
+        const rowData = await row.$$('td');
+        currentNft[headers[0]] = await rowData[0].evaluate((el) => el.textContent.trim());
+        const linkData = await rowData[1].$$('a');
+        const links = await Promise.map(linkData, async (l) => l.evaluate((el) => el.href));
+        currentNft[headers[1]] = links.join(' ');
+        Promise.each(rowData.slice(2), async (data, i) => {
+          currentNft[headers[i + 2]] = await data.evaluate((el) => el.textContent.trim());
+        });
         return currentNft;
       });
-      await addToSheets(nfts, sheet);
-      console.log(`NFTs for ${titles[idx]} added to sheet`);
-    }
-
+      nfts.push(...nftByDay);
+    });
+    await sheet.addRows(nfts, 0);
     await browser.close();
     process.exit(1);
   } catch (error) {
@@ -51,10 +52,6 @@ async function start() {
     browser.close();
     process.exit(1);
   }
-}
-
-async function addToSheets(rows, sheet) {
-  await sheet.addRows(rows, 0);
 }
 
 start();
