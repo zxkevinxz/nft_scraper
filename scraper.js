@@ -30,8 +30,9 @@ async function start() {
       const nftDate = dates[idx];
       const nftsByDayRows = await day.$$('tbody tr');
       const nftByDay = await Promise.map(nftsByDayRows, async (row) => {
-        const currentNft =
-          { Home: '', Twitter: '', Discord: '', Date: nftDate };
+        const currentNft = {
+          Home: '', Twitter: '', Discord: '', Date: nftDate,
+        };
 
         const rowData = await row.$$('td');
         currentNft[headers[0]] = await rowData[0].evaluate((el) => el.textContent.trim());
@@ -49,7 +50,7 @@ async function start() {
       });
       nfts.push(...nftByDay);
     });
-    await sheet.addRows(nfts, 0);
+    await sheet.addRows(nfts);
     await browser.close();
     process.exit(1);
   } catch (error) {

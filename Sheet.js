@@ -16,8 +16,12 @@ module.exports = class Sheet {
     await this.doc.loadInfo();
   }
 
-  async addRows(rows, pageIndex) {
-    const sheet = this.doc.sheetsByIndex[pageIndex];
-    await sheet.addRows(rows);
+  async addRows(rows) {
+    if (rows.length > 0) {
+      const sheet = this.doc.sheetsByIndex[0];
+      await sheet.clear();
+      await sheet.setHeaderRow(Object.keys(rows[0]));
+      await sheet.addRows(rows);
+    }
   }
 };
